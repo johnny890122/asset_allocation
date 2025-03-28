@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
 from pathlib import Path
-import networkx as nx
-import matplotlib.pyplot as plt
 import utils
 
 # Page layout
