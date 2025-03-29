@@ -58,12 +58,23 @@ if fgi_validation:
         )
 
         st.header("Step 2: Portfolio Adjustment")
-        st.write("⚠️ 請確認以下資訊是否正確")
-        st.write(f"當前市場情緒: {fgi_status}; 連續極度恐懼: {conti_exterme_fear}; 連續極度貪婪: {conti_exterme_greed}")
-        st.write(f"當前美元匯率: {usd_twd} TWD/USD")
-        st.write(f"投入比例: {Caculator.input_ratio}%")
-        st.write(f"當月總投入金額: {Caculator.money_input:,.0f} TWD")
-        st.write(f"存入現金池金額: {Caculator.cash_pool:,.0f} TWD")
+        st.write("⚠️ 重要資訊")
+
+        if conti_exterme_fear:
+            diplay_text = "連續極度恐懼"
+        elif conti_exterme_greed:
+            diplay_text = "連續極度貪婪"
+        else:
+            diplay_text = fgi_status
+
+        with st.container():
+            st.write(
+                f"- 當前市場情緒: {diplay_text}\n"
+                f"- 當前美元匯率: {usd_twd}\n"
+                f"- 投入比例: {Caculator.input_ratio}%\n"
+                f"- 當月總投入金額: {Caculator.money_input:,.0f} TWD\n"
+                f"- 存入現金池金額: {Caculator.cash_pool:,.0f} TWD"
+            )
         
         st.dataframe(
             data=Caculator.output_df.style.map(utils.action_color, subset=["行動"]), 
@@ -73,8 +84,10 @@ if fgi_validation:
                 "庫存金額": st.column_config.NumberColumn(format="%.0f"),
                 "佔比(%)": st.column_config.NumberColumn(format="%.2f"),
                 "投入金額": st.column_config.NumberColumn(format="%.0f"),
-                "調整後庫存金額": st.column_config.NumberColumn(format="%.0f"),
+                "調整後庫存": st.column_config.NumberColumn(format="%.0f"),
                 "調整後佔比(%)": st.column_config.NumberColumn(format="%.2f"),
                 "投入金額(USD)": st.column_config.NumberColumn(format="%.0f"),
             }
         )
+
+        download_button = st.button("Download Report", key="download_report")

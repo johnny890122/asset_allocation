@@ -104,15 +104,17 @@ class Caculator():
         df.loc[df["行動"] != "持平", "調整額度"] = df["庫存金額"].sum() * df["目標權重(%)"] / 100 - df["庫存金額"]
         df.loc[(df["調整額度"].apply(np.abs) > df["調整前投入金額"]) & (df["調整額度"] < 0), "調整額度"] = -df["調整前投入金額"]
 
+        if self.fgi_status == "極度恐懼":
+            df.loc[(df.index == "VGSH") & (df["調整額度"] < 0), "調整額度"] *= 0.5
+        elif self.fgi_status == "極度貪婪":
+            df.loc[(df.index != "VGSH") & (df["調整額度"] < 0), "調整額度"] *= 1.5
 
         excessive_quota = df["調整額度"].sum()
 
         df["投入金額"] = df["調整前投入金額"] + df["調整額度"]
-
         df["投入金額"] -= excessive_quota * df["投入金額"] / df["投入金額"].sum()
-
-        df["調整後庫存金額"] = df["庫存金額"] + df["投入金額"]
-        df["ratio"] = df["調整後庫存金額"] / df["調整後庫存金額"].sum() * 100
+        df["調整後庫存"] = df["庫存金額"] + df["投入金額"]
+        df["ratio"] = df["調整後庫存"] / df["調整後庫存"].sum() * 100
         df["調整後佔比(%)"] = df["ratio"]
         df["行動"] = df.apply(lambda x: action_required(x), axis=1)
 
@@ -124,6 +126,6 @@ class Caculator():
         sum_row["行動"] = "-"
         df = pd.concat([df, sum_row.to_frame().T])
 
-        columns = ['投入金額', '投入金額(USD)', '調整後庫存金額', '調整後佔比(%)', '行動']
+        columns = ['投入金額', '投入金額(USD)', '調整後佔比(%)', '行動']
         return df[columns]
             

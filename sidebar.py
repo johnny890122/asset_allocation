@@ -14,18 +14,19 @@ class Sidebar():
         return st.sidebar.selectbox(
             label="當月市場情緒", 
             options=st.session_state.all_fgi_status,
-            index=st.session_state.FGI_INDEX
+            index=st.session_state.FGI_INDEX,
+            key="fgi_status",
         )
     
     @property
     def conti_exterme_fear(self):
         label = "連續三個月皆極度恐懼"
-        return st.sidebar.checkbox(label)
+        return st.sidebar.checkbox(label, key="conti_exterme_fear")
     
     @property 
     def conti_exterme_greed(self):
         label = "連續三個月皆極度貪婪"
-        return st.sidebar.checkbox(label)
+        return st.sidebar.checkbox(label, key="conti_exterme_greed")
 
     @property
     def fgi_info(self):
