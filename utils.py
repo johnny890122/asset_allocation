@@ -8,12 +8,13 @@ def initialize_session_state():
     st.session_state.USD_TWD = 33.125
     st.session_state.DIR = Path("static")
 
-    data = get_target_data(st.session_state.DIR/"target.csv")
+    data = get_target_data(st.session_state.DIR/"target.csv").set_index("代號")
     st.session_state.df = data
     st.session_state.fgi_mapping = get_fgi_mapping()
     st.session_state.all_fgi_status = st.session_state.fgi_mapping["市場情緒"].unique()
 
     st.session_state.threshold_bound = threshold_bound()
+    st.session_state.default_monthly_capital = 40000
 
 def get_fgi_mapping():
     df = pd.read_csv("static/fgi_mapping.csv")
@@ -36,40 +37,24 @@ def action_color(action: str) -> str:
     return "background-color: black"
 
 def action_required(row) -> str:
-    lower_bound = st.session_state.threshold_bound[row["代號"]]["lower_bound"]
-    upper_bound = st.session_state.threshold_bound[row["代號"]]["upper_bound"]
-    if row["佔比"] < lower_bound:
+    bound = st.session_state.threshold_bound[row.name]
+    if row["ratio"] < bound["lower"]:
         return "加碼"
-    elif row["佔比"] > upper_bound:
+    elif row["ratio"] > bound["upper"]:
         return "減碼"
     else:
         return "持平"
 
 def threshold_bound() -> dict:
     df = st.session_state.df.copy()
-    df["upper_bound"] = df["目標權重(%)"] + df["閾值(%)"] * df["目標權重(%)"] / 100
-    df["lower_bound"] = df["目標權重(%)"] - df["閾值(%)"] * df["目標權重(%)"] / 100
+    df["upper"] = df["目標權重(%)"] + df["閾值(%)"] * df["目標權重(%)"] / 100
+    df["lower"] = df["目標權重(%)"] - df["閾值(%)"] * df["目標權重(%)"] / 100
 
     bounds_dict = {
-        row["代號"]: {"lower_bound": row["lower_bound"], "upper_bound": row["upper_bound"]}
-        for _, row in df.iterrows()
+        index: {"lower": row["lower"], "upper": row["upper"]}
+        for index, row in df.iterrows()
     }
-
     return bounds_dict
-
-def compute_dynamic_df(input_df: pd.DataFrame) -> pd.DataFrame:
-    dynamic_df = input_df.copy()
-    dynamic_df["佔比"] = dynamic_df["庫存金額"] / dynamic_df["庫存金額"].sum() * 100
-    dynamic_df["行動"] = dynamic_df.apply(lambda x: action_required(x), axis=1)
-    dynamic_df["佔比(%)"] = dynamic_df["佔比"].apply(lambda x: f"{x:.2f}%" if x >= 0 else "-")
-    dynamic_df = dynamic_df.set_index("代號")[["佔比(%)", "行動"]]
-
-    return dynamic_df
-
-
-# TODO:
-def error_message(message: str):
-    pass
 
 class Caculator():
     def __init__(self,
@@ -85,11 +70,6 @@ class Caculator():
 
     @property
     def input_ratio(self):
-        assert self.fgi_status in ["極度恐懼", "恐懼", "中性", "貪婪", "極度貪婪"]
-        assert not (self.conti_exterme_fear and self.conti_exterme_greed), "Both conti_exterme_fear and conti_exterme_greed cannot be True at the same time."
-        assert not (self.conti_exterme_fear and self.fgi_status != "極度恐懼"), "conti_exterme_fear can only be True when fgi_status is 極度恐懼."
-        assert not (self.conti_exterme_greed and self.fgi_status != "極度貪婪"), "conti_exterme_greed can only be True when fgi_status is 極度貪婪."
-
         fgi_mapping = get_fgi_mapping()
         
         if self.conti_exterme_fear or self.conti_exterme_greed:
