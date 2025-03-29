@@ -47,21 +47,34 @@ with st.container():
     with col1:
         editable_table = body.editable_table
     with col2:
-        dynamic_table = body.compute_dynamic_df(editable_table)
+        colored_dynamic_table = body.colored_dynamic_table(editable_table)
 
 if fgi_validation:
     cal_button = st.button("Calculate")
     if cal_button:
-        st.sidebar.header("⚠️ 重要資訊")
         Caculator = utils.Caculator(
-            editable_table.join(dynamic_table),
-            monthly_capital, available_cash,
+            body.df, monthly_capital, available_cash,
             fgi_status, conti_exterme_fear, conti_exterme_greed
         )
 
-        st.sidebar.write(f"投入比例: {Caculator.input_ratio}%")
-        st.sidebar.write(f"當月總投入金額: {Caculator.input_money:,.0f} TWD")
-        st.sidebar.write(f"存入現金池金額: {Caculator.cash_pool:,.0f} TWD")
-
         st.header("Step 2: Portfolio Adjustment")
-        st.dataframe(Caculator.output_df)
+        st.write("⚠️ 請確認以下資訊是否正確")
+        st.write(f"當前市場情緒: {fgi_status}; 連續極度恐懼: {conti_exterme_fear}; 連續極度貪婪: {conti_exterme_greed}")
+        st.write(f"當前美元匯率: {usd_twd} TWD/USD")
+        st.write(f"投入比例: {Caculator.input_ratio}%")
+        st.write(f"當月總投入金額: {Caculator.money_input:,.0f} TWD")
+        st.write(f"存入現金池金額: {Caculator.cash_pool:,.0f} TWD")
+        
+        st.dataframe(
+            data=Caculator.output_df.style.map(utils.action_color, subset=["行動"]), 
+            use_container_width=True,
+
+            column_config={
+                "庫存金額": st.column_config.NumberColumn(format="%.0f"),
+                "佔比(%)": st.column_config.NumberColumn(format="%.2f"),
+                "投入金額": st.column_config.NumberColumn(format="%.0f"),
+                "調整後庫存金額": st.column_config.NumberColumn(format="%.0f"),
+                "調整後佔比(%)": st.column_config.NumberColumn(format="%.2f"),
+                "投入金額(USD)": st.column_config.NumberColumn(format="%.0f"),
+            }
+        )

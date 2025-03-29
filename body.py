@@ -4,7 +4,16 @@ import utils
 
 class Body():
     def __init__(self):
-        pass
+        self.__df = None
+
+    @property
+    def df(self):
+        return self.__df
+    
+    @df.setter
+    def df(self, df: pd.DataFrame):
+        assert isinstance(df, pd.DataFrame), "df must be a pandas DataFrame"
+        self.__df = df
 
     @property
     def header(self):
@@ -60,22 +69,28 @@ class Body():
         else:
             return "持平"
 
-
-    @staticmethod
-    def compute_dynamic_df(df: pd.DataFrame):
+    def __compute_dynamic_df(self, editable_table: pd.DataFrame) -> pd.DataFrame:
         desired_columns = ["佔比(%)", "行動"]
-
-        dynamic_df = df.copy()
+        dynamic_df = editable_table.copy()
         dynamic_df["ratio"] = dynamic_df["庫存金額"] / dynamic_df["庫存金額"].sum() * 100
         dynamic_df["行動"] = dynamic_df.apply(lambda x: utils.action_required(x), axis=1)
-        dynamic_df["佔比(%)"] = dynamic_df["ratio"].apply(lambda x: f"{x:.2f}" if x >= 0 else "-")
-        dynamic_df = dynamic_df[desired_columns]
+        # dynamic_df["佔比(%)"] = dynamic_df["ratio"].apply(lambda x: f"{x:.2f}" if x >= 0 else "-")
+        dynamic_df["佔比(%)"] = dynamic_df["ratio"]
+        # .apply(lambda x: f"{x:.2f}" if x >= 0 else "-")
 
+
+        return dynamic_df[desired_columns]
+    
+    def colored_dynamic_table(self, editable_table: pd.DataFrame):
+        dynamic_table = self.__compute_dynamic_df(editable_table)
+
+        # set main df
+        self.df = editable_table.join(dynamic_table)
+        
         return st.dataframe(
-            data=dynamic_df.style.map(utils.action_color, subset=["行動"]), 
-            use_container_width=True
+            data=dynamic_table.style.map(utils.action_color, subset=["行動"]), 
+            use_container_width=True,
+            column_config={
+                "佔比(%)": st.column_config.NumberColumn(format="%.2f")
+            }
         )
-
-
-
-

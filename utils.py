@@ -15,6 +15,7 @@ def initialize_session_state():
 
     st.session_state.threshold_bound = threshold_bound()
     st.session_state.default_monthly_capital = 40000
+    st.session_state.BONDS = ["VGSH"]
 
 def get_fgi_mapping():
     df = pd.read_csv("static/fgi_mapping.csv")
@@ -27,7 +28,7 @@ def get_target_data(dir: Path) -> pd.DataFrame:
 
 # Add color formatting
 def action_color(action: str) -> str:
-    assert action in ["加碼", "減碼", "持平"], f"Invalid action: {action}"
+    # assert action in ["加碼", "減碼", "持平"], f"Invalid action: {action}"
     
     if action == "加碼":
         return "background-color: green"
@@ -55,15 +56,14 @@ def threshold_bound() -> dict:
         for index, row in df.iterrows()
     }
     return bounds_dict
-
 class Caculator():
     def __init__(self,
-        df: pd.DataFrame, monthly_input: int, liquid_money: int, fgi_status: str, 
+        df: pd.DataFrame, monthly_capital: int, available_cash: int, fgi_status: str, 
         conti_exterme_fear: bool, conti_exterme_greed: bool, 
     ):
         self.df = df
-        self.monthly_input = monthly_input
-        self.liquid_money = liquid_money
+        self.monthly_capital = monthly_capital
+        self.available_cash = available_cash
         self.fgi_status = fgi_status
         self.conti_exterme_fear = conti_exterme_fear
         self.conti_exterme_greed = conti_exterme_greed
@@ -80,22 +80,50 @@ class Caculator():
         return fgi_mapping.loc[fgi_mapping["市場情緒"] == self.fgi_status, columns].values[0]
 
     @property
-    def input_money(self) -> int:
+    def money_input(self) -> int:
         ratio = self.input_ratio
-        expected_input_money = self.monthly_input * ratio / 100
+        expected_input_money = self.monthly_capital * ratio / 100
 
-        return min(expected_input_money, self.monthly_input+self.liquid_money)
+        return min(expected_input_money, self.monthly_capital+self.available_cash)
 
     @property
     def cash_pool(self) -> int:
-        return self.monthly_input - self.input_money
+        return self.monthly_capital - self.money_input
     
     @property
     def output_df(self):
-        # TODO: Implement the logic to calculate the output DataFrame
-        output_df = self.df.copy()
-        output_df["投入金額(USD)"] = self.monthly_input
-        output_df["投入金額"] = self.monthly_input
-        output_df["成本"] = 0
-        output_df["調整後佔比"] = 0
-        return output_df
+        assert set(self.df["行動"].unique()) <= {"加碼", "減碼", "持平"}, "行動欄位必須為加碼、減碼或持平"
+        df = self.df.copy()
+
+        df["調整前投入金額"] = self.money_input * df["目標權重(%)"] / 100
+
+        df.loc[df["行動"] != "持平", "偏離程度"] = df["佔比(%)"] - df["目標權重(%)"]
+        df.loc[df["行動"] == "持平", "偏離程度"] = 0
+
+        df.loc[df["行動"] == "持平", "調整額度"] = 0
+        df.loc[df["行動"] != "持平", "調整額度"] = df["庫存金額"].sum() * df["目標權重(%)"] / 100 - df["庫存金額"]
+        df.loc[(df["調整額度"].apply(np.abs) > df["調整前投入金額"]) & (df["調整額度"] < 0), "調整額度"] = -df["調整前投入金額"]
+
+
+        excessive_quota = df["調整額度"].sum()
+
+        df["投入金額"] = df["調整前投入金額"] + df["調整額度"]
+
+        df["投入金額"] -= excessive_quota * df["投入金額"] / df["投入金額"].sum()
+
+        df["調整後庫存金額"] = df["庫存金額"] + df["投入金額"]
+        df["ratio"] = df["調整後庫存金額"] / df["調整後庫存金額"].sum() * 100
+        df["調整後佔比(%)"] = df["ratio"]
+        df["行動"] = df.apply(lambda x: action_required(x), axis=1)
+
+        df["投入金額(USD)"] = df["投入金額"] / st.session_state.USD_TWD
+
+        # Add a row to sum up the columns
+        sum_row = df.select_dtypes(include=[np.number]).sum()
+
+        sum_row["行動"] = "-"
+        df = pd.concat([df, sum_row.to_frame().T])
+
+        columns = ['投入金額', '投入金額(USD)', '調整後庫存金額', '調整後佔比(%)', '行動']
+        return df[columns]
+            
