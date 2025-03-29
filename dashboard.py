@@ -79,15 +79,10 @@ if fgi_validation:
         st.dataframe(
             data=Caculator.output_df.style.map(utils.action_color, subset=["行動"]), 
             use_container_width=True,
-
             column_config={
-                "庫存金額": st.column_config.NumberColumn(format="%.0f"),
-                "佔比(%)": st.column_config.NumberColumn(format="%.2f"),
                 "投入金額": st.column_config.NumberColumn(format="%.0f"),
                 "調整後庫存": st.column_config.NumberColumn(format="%.0f"),
                 "調整後佔比(%)": st.column_config.NumberColumn(format="%.2f"),
-                "投入金額(USD)": st.column_config.NumberColumn(format="%.0f"),
+                "美金計價": st.column_config.NumberColumn(format="%.0f"),
             }
         )
-
-        download_button = st.button("Download Report", key="download_report")

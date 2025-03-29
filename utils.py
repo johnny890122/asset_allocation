@@ -118,7 +118,7 @@ class Caculator():
         df["調整後佔比(%)"] = df["ratio"]
         df["行動"] = df.apply(lambda x: action_required(x), axis=1)
 
-        df["投入金額(USD)"] = df["投入金額"] / st.session_state.USD_TWD
+        df["美金計價"] = df["投入金額"] / st.session_state.USD_TWD
 
         # Add a row to sum up the columns
         sum_row = df.select_dtypes(include=[np.number]).sum()
@@ -126,6 +126,6 @@ class Caculator():
         sum_row["行動"] = "-"
         df = pd.concat([df, sum_row.to_frame().T])
 
-        columns = ['投入金額', '投入金額(USD)', '調整後佔比(%)', '行動']
+        columns = ['投入金額', '美金計價', '調整後佔比(%)', '行動']
         return df[columns]
             
