@@ -69,7 +69,7 @@ class Body():
         else:
             return "持平"
 
-    def __compute_dynamic_df(self, editable_table: pd.DataFrame) -> pd.DataFrame:
+    def compute_dynamic_df(self, editable_table: pd.DataFrame) -> pd.DataFrame:
         desired_columns = ["佔比(%)", "行動"]
         dynamic_df = editable_table.copy()
         dynamic_df["ratio"] = dynamic_df["庫存金額"] / dynamic_df["庫存金額"].sum() * 100
@@ -82,7 +82,7 @@ class Body():
         return dynamic_df[desired_columns]
     
     def colored_dynamic_table(self, editable_table: pd.DataFrame):
-        dynamic_table = self.__compute_dynamic_df(editable_table)
+        dynamic_table = self.compute_dynamic_df(editable_table)
 
         # set main df
         self.df = editable_table.join(dynamic_table)
