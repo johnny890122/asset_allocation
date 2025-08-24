@@ -5,14 +5,19 @@ from pathlib import Path
 import utils
 from sidebar import Sidebar
 from body import Body
-
-# Initialize session state
-utils.initialize_session_state()
-sidebar = Sidebar()
-body = Body()
+from db import DBClient
 
 # Page layout
 st.set_page_config(layout="wide")
+
+# Initialize session state
+utils.initialize_session_state()
+
+# Check MongoDB connection
+db_client = DBClient()
+
+sidebar = Sidebar()
+body = Body()
 
 # Sidebar
 sidebar_header = sidebar.header
@@ -70,7 +75,7 @@ if fgi_validation:
         with st.container():
             st.write(
                 f"- 當前市場情緒: {diplay_text}\n"
-                f"- 當前美元匯率: {usd_twd}\n"
+                f"- 當前美元匯率: {st.session_state.usd_twd}\n"
                 f"- 投入比例: {Caculator.input_ratio}%\n"
                 f"- 當月總投入金額: {Caculator.money_input:,.0f} TWD\n"
                 f"- 存入現金池金額: {Caculator.cash_pool:,.0f} TWD"

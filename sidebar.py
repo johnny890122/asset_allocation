@@ -1,8 +1,60 @@
 import streamlit as st
+import requests
+from datetime import datetime, timedelta, timezone
+from db import DBClient
 
 class Sidebar():
     def __init__(self):
-        pass
+        self.db_client = DBClient()
+        self._get_exchange_rate()
+
+    def _get_exchange_rate(self):
+        """
+        Fetches the exchange rate, prioritizing today's rate from the DB,
+        then falling back to an API call, and finally to the latest in DB.
+        """
+        today_str = datetime.now(timezone.utc).strftime("%Y/%m/%d")
+
+        # 1. Check for today's rate in the database
+        rate_data = self.db_client.get_currency_rate_by_date(today_str)
+
+        if rate_data:
+            st.session_state.USD_TWD = rate_data['rate']
+            st.session_state.USD_TWD_DATE = rate_data['date']
+            return
+
+        # 2. If not found, call the API
+        try:
+            response = requests.get("https://open.er-api.com/v6/latest/USD")
+            print("Fetching exchange rate from API...")
+            response.raise_for_status()  # Raise an exception for bad status codes
+            api_data = response.json()
+
+            if api_data.get("result") == "success":
+                rate = api_data['rates']['TWD']
+                timestamp = api_data['time_last_update_unix']
+                date_str = datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime("%Y/%m/%d")
+                
+                # Save to database
+                self.db_client.insert_currency_rate("USD", "TWD", date_str, rate)
+                
+                st.session_state.USD_TWD = rate
+                st.session_state.USD_TWD_DATE = date_str
+                return
+
+        except requests.exceptions.RequestException as e:
+            st.sidebar.warning(f"API call failed: {e}. Using latest available rate.")
+
+        # 3. If API fails or returns an error, use the latest rate from the DB
+        latest_rate_data = self.db_client.get_latest_currency_rate()
+        if latest_rate_data:
+            st.session_state.USD_TWD = latest_rate_data['rate']
+            st.session_state.USD_TWD_DATE = latest_rate_data['date']
+        else:
+            # Fallback if DB is also empty
+            st.sidebar.error("Could not retrieve exchange rate from any source.")
+            st.session_state.USD_TWD = 30.0  # Default fallback
+            st.session_state.USD_TWD_DATE = None
 
     @property
     def header(self):
@@ -60,5 +112,10 @@ class Sidebar():
 
     @property
     def usd_twd_info(self):
-        info = "[More about the USD/TWD](https://www.bloomberg.com/quote/USDTWD:CUR)"
-        return st.sidebar.markdown(info)
+
+        if st.session_state.USD_TWD_DATE:
+            label = f"(Date: {st.session_state.USD_TWD_DATE})"
+        else:
+            label = f"(Date: N/A)"
+
+        return st.sidebar.markdown(label)
