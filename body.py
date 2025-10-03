@@ -28,9 +28,17 @@ class Body():
     @property
     def monthly_capital(self):
         return st.number_input(
-            label="當月資金", 
+            label="當月投入資金", 
             min_value=0, 
             value=st.session_state.default_monthly_capital, 
+            step=1000,
+        )
+
+    @property
+    def current_portfolio(self):
+        return st.number_input(
+            label="當前投資組合", 
+            min_value=0, 
             step=1000,
         )
     

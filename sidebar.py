@@ -114,8 +114,8 @@ class Sidebar():
     def usd_twd_info(self):
 
         if st.session_state.USD_TWD_DATE:
-            label = f"(Date: {st.session_state.USD_TWD_DATE})"
+            label = f"Date: {st.session_state.USD_TWD_DATE}"
         else:
-            label = f"(Date: N/A)"
+            label = f"Date: N/A"
 
         return st.sidebar.markdown(label)

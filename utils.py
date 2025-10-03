@@ -58,12 +58,14 @@ def threshold_bound() -> dict:
     return bounds_dict
 class Caculator():
     def __init__(self,
-        df: pd.DataFrame, monthly_capital: int, available_cash: int, fgi_status: str, 
+        df: pd.DataFrame, monthly_capital: int, available_cash: int, 
+        current_portfolio: int, fgi_status: str, 
         conti_exterme_fear: bool, conti_exterme_greed: bool, 
     ):
         self.df = df
         self.monthly_capital = monthly_capital
         self.available_cash = available_cash
+        self.current_portfolio = current_portfolio
         self.fgi_status = fgi_status
         self.conti_exterme_fear = conti_exterme_fear
         self.conti_exterme_greed = conti_exterme_greed
@@ -91,6 +93,12 @@ class Caculator():
         return self.monthly_capital - self.money_input
     
     @property
+    def to_vgsh(self) -> int:
+        to_vgsh = self.available_cash + self.cash_pool - (self.money_input + self.current_portfolio) * 0.2
+        print(self.money_input + self.current_portfolio)
+        return max(to_vgsh, 0)
+    
+    @property
     def output_df(self):
         assert set(self.df["行動"].unique()) <= {"加碼", "減碼", "持平"}, "行動欄位必須為加碼、減碼或持平"
         df = self.df.copy()
@@ -113,6 +121,10 @@ class Caculator():
 
         df["投入金額"] = df["調整前投入金額"] + df["調整額度"]
         df["投入金額"] -= excessive_quota * df["投入金額"] / df["投入金額"].sum()
+
+        if self.to_vgsh > 0:
+            df.loc[df.index == "VGSH", "投入金額"] += self.to_vgsh
+
         df["調整後庫存"] = df["庫存金額"] + df["投入金額"]
         df["ratio"] = df["調整後庫存"] / df["調整後庫存"].sum() * 100
         df["調整後佔比(%)"] = df["ratio"]
