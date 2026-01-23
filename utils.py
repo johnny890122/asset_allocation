@@ -2,6 +2,7 @@ import pandas as pd
 from pathlib import Path
 import numpy as np
 import streamlit as st
+from datetime import datetime
 
 def initialize_session_state():
     st.session_state.FGI_INDEX = 1
@@ -23,6 +24,17 @@ def get_fgi_mapping():
 
 def get_target_data(dir: Path) -> pd.DataFrame:
     df = pd.read_csv(dir)
+    BIRTH_YEAR = 2000
+    factor = 110 - (datetime.now().year - BIRTH_YEAR)
+
+    df.loc[df["代號"].isin(["VGSH", "VGIT"]), "目標權重(%)"] = df.loc[
+        df["代號"].isin(["VGSH", "VGIT"]), "原始權重(%)"
+    ] * (100-factor) / 15
+
+    df.loc[~df["代號"].isin(["VGSH", "VGIT"]), "目標權重(%)"] = df.loc[
+        ~df["代號"].isin(["VGSH", "VGIT"]), "原始權重(%)"
+    ] * factor / 85
+
     df["庫存金額"] = 0
     return df
 
