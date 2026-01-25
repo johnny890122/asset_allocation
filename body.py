@@ -82,9 +82,7 @@ class Body():
         dynamic_df = editable_table.copy()
         dynamic_df["ratio"] = dynamic_df["庫存金額"] / dynamic_df["庫存金額"].sum() * 100
         dynamic_df["行動"] = dynamic_df.apply(lambda x: utils.action_required(x), axis=1)
-        # dynamic_df["佔比(%)"] = dynamic_df["ratio"].apply(lambda x: f"{x:.2f}" if x >= 0 else "-")
         dynamic_df["佔比(%)"] = dynamic_df["ratio"]
-        # .apply(lambda x: f"{x:.2f}" if x >= 0 else "-")
 
 
         return dynamic_df[desired_columns]
