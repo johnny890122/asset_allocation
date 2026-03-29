@@ -4,16 +4,16 @@ import utils
 
 class Body():
     def __init__(self):
-        self.__df = None
+        self._df = None
 
     @property
     def df(self):
-        return self.__df
-    
+        return self._df
+
     @df.setter
     def df(self, df: pd.DataFrame):
         assert isinstance(df, pd.DataFrame), "df must be a pandas DataFrame"
-        self.__df = df
+        self._df = df
 
     @property
     def header(self):
@@ -57,11 +57,12 @@ class Body():
     
     @property
     def editable_table(self):
-        desired_columns = ["標的", "目標權重(%)", "庫存金額"]
+        desired_columns = ["標的", "目標權重(%)", "庫存金額", "暫存金額"]
         return st.data_editor(
             data=st.session_state.df[desired_columns], 
             column_config={
-                "庫存金額": st.column_config.NumberColumn("庫存金額", min_value=0)
+                "庫存金額": st.column_config.NumberColumn("庫存金額", min_value=0),
+                "暫存金額": st.column_config.NumberColumn("暫存金額", min_value=0)
             },
             disabled=["代號", "標的", "目標權重(%)", ],
             use_container_width=True
@@ -80,7 +81,7 @@ class Body():
     def compute_dynamic_df(self, editable_table: pd.DataFrame) -> pd.DataFrame:
         desired_columns = ["佔比(%)", "行動"]
         dynamic_df = editable_table.copy()
-        dynamic_df["ratio"] = dynamic_df["庫存金額"] / dynamic_df["庫存金額"].sum() * 100
+        dynamic_df["ratio"] = (dynamic_df["庫存金額"] + dynamic_df["暫存金額"]) / (dynamic_df["庫存金額"].sum() + dynamic_df["暫存金額"].sum()) * 100
         dynamic_df["行動"] = dynamic_df.apply(lambda x: utils.action_required(x), axis=1)
         dynamic_df["佔比(%)"] = dynamic_df["ratio"]
 

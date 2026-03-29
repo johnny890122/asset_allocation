@@ -37,6 +37,10 @@ with st.sidebar:
 
 # Main content
 body_header = body.header
+
+age, factor = utils.get_age_factor()
+st.info(f"目前年齡：{age}；股債比 {factor}:{100 - factor}")
+
 with st.expander("Details"):
     st.write(st.session_state.fgi_mapping)
     threshold_df = utils.threshold_bound()
@@ -81,12 +85,12 @@ if fgi_validation:
                 f"- 當前市場情緒: {diplay_text}\n"
                 f"- 當前美元匯率: {st.session_state.usd_twd}\n"
                 f"- 投入比例: {Caculator.input_ratio}%\n"
-                f"- 當月總投入金額: {Caculator.money_input + Caculator.to_vgsh:,.0f} TWD\n"
-                f"- 存入現金池金額: {Caculator.cash_pool - Caculator.to_vgsh:,.0f} TWD"
+                f"- 當月總投入金額: {Caculator.money_input + Caculator.to_overflow :,.0f} TWD\n"
+                f"- 存入現金池金額: {Caculator.cash_pool - Caculator.to_overflow :,.0f} TWD"
             )
-            if Caculator.to_vgsh > 0:
+            if Caculator.to_overflow > 0:
                 st.write(
-                    f"p.s. 原本投入 {Caculator.money_input:,.0f} TWD，其餘 {Caculator.to_vgsh:,.0f} TWD 為機會金溢出至 VGSH"
+                    f"p.s. 原本投入 {Caculator.money_input:,.0f} TWD，其餘 {Caculator.to_overflow:,.0f} TWD 為機會金溢出至資產"
                 )
 
         st.dataframe(

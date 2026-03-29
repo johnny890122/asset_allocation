@@ -22,10 +22,15 @@ def get_fgi_mapping():
     df = pd.read_csv("static/fgi_mapping.csv")
     return df
 
+def get_age_factor() -> tuple[int, int]:
+    BIRTH_YEAR = 2000
+    age = datetime.now().year - BIRTH_YEAR
+    factor = 110 - age
+    return age, factor
+
 def get_target_data(dir: Path) -> pd.DataFrame:
     df = pd.read_csv(dir)
-    BIRTH_YEAR = 2000
-    factor = 110 - (datetime.now().year - BIRTH_YEAR)
+    _, factor = get_age_factor()
 
     df.loc[df["代號"].isin(["VGSH", "VGIT"]), "目標權重(%)"] = df.loc[
         df["代號"].isin(["VGSH", "VGIT"]), "原始權重(%)"
@@ -36,6 +41,7 @@ def get_target_data(dir: Path) -> pd.DataFrame:
     ] * factor / 85
 
     df["庫存金額"] = 0
+    df["暫存金額"] = 0
     return df
 
 # Add color formatting
@@ -105,23 +111,23 @@ class Caculator():
         return self.monthly_capital - self.money_input
     
     @property
-    def to_vgsh(self) -> int:
-        to_vgsh = self.available_cash + self.cash_pool - (self.money_input + self.current_portfolio) * 0.2
+    def to_overflow(self) -> int:
+        to_overflow = self.available_cash + self.cash_pool - (self.money_input + self.current_portfolio) * 0.2
         print(self.money_input + self.current_portfolio)
-        return max(to_vgsh, 0)
+        return max(to_overflow, 0)
     
     @property
     def output_df(self):
         assert set(self.df["行動"].unique()) <= {"加碼", "減碼", "持平"}, "行動欄位必須為加碼、減碼或持平"
         df = self.df.copy()
 
-        df["調整前投入金額"] = self.money_input * df["目標權重(%)"] / 100
+        df["調整前投入金額"] = (self.money_input + self.to_overflow) * df["目標權重(%)"] / 100
 
         df.loc[df["行動"] != "持平", "偏離程度"] = df["佔比(%)"] - df["目標權重(%)"]
         df.loc[df["行動"] == "持平", "偏離程度"] = 0
 
         df.loc[df["行動"] == "持平", "調整額度"] = 0
-        df.loc[df["行動"] != "持平", "調整額度"] = df["庫存金額"].sum() * df["目標權重(%)"] / 100 - df["庫存金額"]
+        df.loc[df["行動"] != "持平", "調整額度"] = (df["庫存金額"].sum() + df["暫存金額"].sum()) * df["目標權重(%)"] / 100 - (df["庫存金額"] + df["暫存金額"])
         df.loc[(df["調整額度"].apply(np.abs) > df["調整前投入金額"]) & (df["調整額度"] < 0), "調整額度"] = -df["調整前投入金額"]
 
         if self.fgi_status == "極度恐懼":
@@ -133,11 +139,10 @@ class Caculator():
 
         df["投入金額"] = df["調整前投入金額"] + df["調整額度"]
         df["投入金額"] -= excessive_quota * df["投入金額"] / df["投入金額"].sum()
+        # if self.to_overflow > 0:
+        #     df.loc[df.index == "VGSH", "投入金額"] += self.to_overflow
 
-        if self.to_vgsh > 0:
-            df.loc[df.index == "VGSH", "投入金額"] += self.to_vgsh
-
-        df["調整後庫存"] = df["庫存金額"] + df["投入金額"]
+        df["調整後庫存"] = df["庫存金額"] + df["投入金額"] + df["暫存金額"]
         df["ratio"] = df["調整後庫存"] / df["調整後庫存"].sum() * 100
         df["調整後佔比(%)"] = df["ratio"]
         df["行動"] = df.apply(lambda x: action_required(x), axis=1)

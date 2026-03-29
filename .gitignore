@@ -176,3 +176,4 @@ cython_debug/
 # Streamlit secrets
 .streamlit/secrets.toml
 .vscode/
+.envrc
